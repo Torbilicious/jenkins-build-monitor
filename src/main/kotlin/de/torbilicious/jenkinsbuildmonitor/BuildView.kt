@@ -14,6 +14,9 @@ import javafx.scene.paint.Color
 import javafx.util.Duration
 import tornadofx.*
 import java.net.URI
+import java.text.SimpleDateFormat
+import java.time.Instant
+import java.util.*
 
 
 private const val windowTitle = "Jenkins Build Monitor"
@@ -51,7 +54,12 @@ class BuildView : View(windowTitle) {
                             }
                         }
 
-                        text = "${it.name} -> $lastBuildStatus"
+                        Instant.ofEpochMilli()
+
+                        val sdf = SimpleDateFormat("HH:mm:ss")
+                        val lastBuildTime = sdf.format(Date(it.details().lastBuild.details().timestamp))
+
+                        text = "${it.name}  $lastBuildTime"
 
                         style {
                             backgroundColor = when (lastBuildStatus) {
@@ -63,8 +71,7 @@ class BuildView : View(windowTitle) {
                     }
                 }
 
-                val allJobs = jenkins.jobs.map { it.value }
-                jobsProperty.set(FXCollections.observableArrayList(allJobs))
+                jobsProperty.set(FXCollections.observableArrayList(getJobs()))
             }
         }
 
@@ -74,7 +81,7 @@ class BuildView : View(windowTitle) {
             setNewTitle(windowTitle + " (Updating...)")
 
             runAsync {
-                jenkins.jobs.map { it.value }
+                getJobs()
             } ui {
                 jobsProperty.set(FXCollections.observableArrayList(it))
                 setNewTitle(windowTitle)
@@ -91,9 +98,13 @@ class BuildView : View(windowTitle) {
 
     private fun initJenkinsServer(): JenkinsServer {
         return JenkinsServer(
-                URI("http://localhost:32774"),
+                URI("http://localhost:32769"),
                 "admin",
                 "admin"
         )
+    }
+
+    private fun getJobs(): List<Job> {
+        return jenkins.jobs.map { it.value }.sortedByDescending { it.details().lastBuild.details().timestamp }
     }
 }
